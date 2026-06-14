@@ -7,18 +7,28 @@
 Turn every conversation into action
 
 ## Logo
-Text wordmark: **NOTEWRIGHT** in navy (#1B2A4A)
-*Note: This is a placeholder. Final logo to be designed.*
+**Official logo:** `brand/notewright-logo-v5-system-1.svg` — faceted nib + circuitry mark
 
-## Colours
-- **Primary Navy:** #1B2A4A
-- **Accent Teal:** #2A9D8F
-- **White:** #FFFFFF
-- **Light Grey:** #F5F5F5
+Variants included in the brand sheet:
+- **Primary Logo** — navy mark + navy text on light backgrounds
+- **On Dark** — light mark + white text on dark/navy backgrounds (used in nav bar)
+- **The Mark** — standalone icon (no text)
+- **App / Social Icon** — rounded square badge versions (light, grey, dark)
+
+## Colours (updated v5)
+- **Navy:** #16263F
+- **Navy mid:** #21395C
+- **Gold:** #E2B53C
+- **Gold deep:** #BC8A1C
+- **Light:** #F4F6FA
+
+*Legacy website palette (pending full migration):*
+- *Accent Teal:* #2A9D8F
+- *Light Grey:* #F5F5F5
 
 ## Typography
-- Headings: Clean sans-serif (e.g., Inter, DM Sans)
-- Body: Readable sans-serif, 16px minimum
+- **Headings:** Poppins (Bold 700)
+- **Body:** Inter or clean sans-serif, 16px minimum
 
 ## Tone of Voice
 - Professional but approachable

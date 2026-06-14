@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>NOTEWRIGHT — Turn every conversation into action</title>
 <style>
   :root {
@@ -17,7 +18,7 @@
   
   /* NAV */
   nav { background: var(--navy); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-  nav .logo { color: var(--white); font-size: 1.5rem; font-weight: 700; letter-spacing: 3px; text-decoration: none; }
+  nav .logo { text-decoration: none; display: flex; align-items: center; }
   nav ul { list-style: none; display: flex; gap: 1.5rem; flex-wrap: wrap; }
   nav ul li a { color: var(--white); text-decoration: none; font-size: 0.9rem; opacity: 0.85; transition: opacity 0.2s; }
   nav ul li a:hover { opacity: 1; }
@@ -106,7 +107,35 @@
 
 <!-- NAV -->
 <nav>
-  <a href="#home" class="logo">NOTEWRIGHT</a>
+  <a href="#home" class="logo" aria-label="Notewright home">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 10 1050 220" height="44" style="display:block;">
+      <g transform="translate(0, 0) scale(0.92)">
+        <path d="M 52 92 L 20 92 L 20 126" fill="none" stroke="#9FB0CF" stroke-width="4.6" stroke-linejoin="miter" stroke-linecap="round"/>
+        <circle cx="20" cy="126" r="5.4" fill="#9FB0CF"/>
+        <path d="M 52 116 L 32 116" fill="none" stroke="#9FB0CF" stroke-width="4.6" stroke-linejoin="miter" stroke-linecap="round"/>
+        <circle cx="32" cy="116" r="5.4" fill="#9FB0CF"/>
+        <path d="M 56 140 L 34 162" fill="none" stroke="#9FB0CF" stroke-width="4.6" stroke-linejoin="miter" stroke-linecap="round"/>
+        <circle cx="34" cy="162" r="5.4" fill="#9FB0CF"/>
+        <path d="M 60 165 L 60 190 L 40 190" fill="none" stroke="#9FB0CF" stroke-width="4.6" stroke-linejoin="miter" stroke-linecap="round"/>
+        <circle cx="40" cy="190" r="5.4" fill="#9FB0CF"/>
+        <path d="M 110 197 L 92 214 L 62 214" fill="none" stroke="#9FB0CF" stroke-width="4.6" stroke-linejoin="miter" stroke-linecap="round"/>
+        <circle cx="62" cy="214" r="5.4" fill="#9FB0CF"/>
+        <path d="M 131 197 L 146 212 L 172 212" fill="none" stroke="#9FB0CF" stroke-width="4.6" stroke-linejoin="miter" stroke-linecap="round"/>
+        <circle cx="172" cy="212" r="5.4" fill="#9FB0CF"/>
+        <circle cx="44" cy="103" r="5.4" fill="#9FB0CF"/>
+        <circle cx="150" cy="198" r="4.86" fill="#9FB0CF"/>
+        <polygon points="120,20 50,59.6 190,59.6" fill="#8493B0"/>
+        <polygon points="50,59.6 120,113.6 120,200" fill="#A9B9D6"/>
+        <polygon points="190,59.6 120,113.6 120,160.4" fill="#E6BC46"/>
+        <polygon points="190,59.6 120,160.4 120,200" fill="#C99A24"/>
+        <line x1="120" y1="74" x2="120" y2="194.6" stroke="#C7D2E8" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="120" cy="74" r="11.9" fill="#13243F" stroke="#9FB0CF" stroke-width="3.15"/>
+      </g>
+      <g transform="translate(221.68, 23.56)">
+        <text x="0" y="137.28" font-family="Poppins, sans-serif" font-weight="700" font-size="132" letter-spacing="0.5" fill="#FFFFFF">Notewright</text>
+      </g>
+    </svg>
+  </a>
   <ul>
     <li><a href="#home">Home</a></li>
     <li><a href="#how-it-works">How It Works</a></li>
