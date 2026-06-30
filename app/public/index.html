@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notewright — AI Meeting Intelligence</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #243559;
+    --gold: #C9A84C;
+    --gold-light: #D4BA6A;
+    --bg: #F7F8FA;
+    --card: #FFFFFF;
+    --text: #2D3748;
+    --text-light: #718096;
+    --border: #E2E8F0;
+    --success: #38A169;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* --- Header --- */
+  header {
+    background: var(--navy);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(27,42,74,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo svg { width: 28px; height: 28px; }
+
+  .logo-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+
+  .logo-badge {
+    font-size: 0.65rem;
+    background: var(--gold);
+    color: var(--navy);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .health-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #666;
+    transition: background 0.3s;
+  }
+  .health-dot.ok { background: var(--success); }
+  .health-dot.err { background: #E53E3E; }
+
+  /* --- Main layout --- */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .hero h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+
+  .hero p {
+    color: var(--text-light);
+    font-size: 0.95rem;
+  }
+
+  /* --- Grid --- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* --- Cards --- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s;
+  }
+
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+  .card h2 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--navy);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card h2 .icon { font-size: 1.1rem; }
+
+  /* --- Textarea --- */
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    padding: 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--text);
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.15);
+  }
+
+  .char-count {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+
+  /* --- Buttons --- */
+  .btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .btn {
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn:hover {
+    border-color: var(--gold);
+    background: #FFFDF5;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .btn-primary {
+    grid-column: 1 / -1;
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-size: 0.85rem;
+    padding: 0.75rem;
+    justify-content: center;
+  }
+
+  .btn-primary:hover {
+    background: var(--navy-light);
+    border-color: var(--navy-light);
+  }
+
+  /* --- Output --- */
+  .output-area {
+    min-height: 220px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #FAFBFC;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .output-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    gap: 8px;
+  }
+
+  .output-placeholder .icon { font-size: 2rem; opacity: 0.4; }
+
+  .output-label {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: rgba(201,168,76,0.1);
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 0.75rem;
+  }
+
+  .output-text {
+    font-size: 0.88rem;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .output-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+
+  .btn-sm:hover { border-color: var(--gold); }
+
+  /* --- Spinner --- */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* --- Toast --- */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--navy);
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 200;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* --- Mermaid --- */
+  .mermaid-container svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* --- Footer --- */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-light);
+    font-size: 0.8rem;
+  }
+
+  footer a { color: var(--gold); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none">
+      <polygon points="16,2 28,10 28,22 16,30 4,22 4,10" fill="#C9A84C" opacity="0.2"/>
+      <polygon points="16,6 24,11 24,21 16,26 8,21 8,11" fill="#C9A84C" opacity="0.4"/>
+      <polygon points="16,10 20,13 20,19 16,22 12,19 12,13" fill="#C9A84C"/>
+      <line x1="16" y1="10" x2="16" y2="2" stroke="#C9A84C" stroke-width="1.5"/>
+    </svg>
+    <span class="logo-text">NOTEWRIGHT</span>
+    <span class="logo-badge">AI</span>
+  </div>
+  <div class="health-dot" id="healthDot" title="Server status"></div>
+</header>
+
+<div class="container">
+  <div class="hero">
+    <h1>Transform Notes into Action</h1>
+    <p>Paste your meeting transcript or notes. Choose an output. Get results in seconds.</p>
+  </div>
+
+  <div class="grid">
+    <!-- Input Panel -->
+    <div class="card">
+      <h2><span class="icon">📝</span> Input</h2>
+      <textarea id="transcript" placeholder="Paste your meeting transcript, notes, or raw text here...&#10;&#10;Example:&#10;Team standup — June 30. Sarah: The client demo is Thursday. We need the deck by Wednesday EOD. Mike will handle slides 1–5, I'll do 6–10. Budget approved for Q3 campaign at $12k. John: I'll set up the analytics dashboard by Friday."></textarea>
+      <div class="char-count"><span id="charCount">0</span> / 50,000</div>
+
+      <div class="btn-grid">
+        <button class="btn" onclick="generate('summary')">📋 Summary</button>
+        <button class="btn" onclick="generate('actions')">✅ Actions</button>
+        <button class="btn" onclick="generate('email')">📧 Email</button>
+        <button class="btn" onclick="generate('decisions')">⚖️ Decisions</button>
+        <button class="btn" onclick="generate('plan')">📊 Plan</button>
+        <button class="btn" onclick="generate('business')">💼 Business</button>
+        <button class="btn btn-primary" onclick="generate('workflow')">🔀 Generate Workflow Diagram</button>
+      </div>
+    </div>
+
+    <!-- Output Panel -->
+    <div class="card">
+      <h2><span class="icon">⚡</span> Output</h2>
+      <div class="output-area" id="outputArea">
+        <div class="output-placeholder">
+          <span class="icon">🖊️</span>
+          <span>Your AI-generated output will appear here</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  Built by <a href="#">Notewright</a> — AI-powered meeting intelligence.<br>
+  <em style="font-size:0.7rem; margin-top:4px; display:inline-block;">
+    Notewright is independent and is not affiliated with or endorsed by Flowtica.
+  </em>
+</footer>
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: "neutral" });
+
+  const textarea = document.getElementById("transcript");
+  const charCount = document.getElementById("charCount");
+  const outputArea = document.getElementById("outputArea");
+  const healthDot = document.getElementById("healthDot");
+
+  textarea.addEventListener("input", () => {
+    charCount.textContent = textarea.value.length.toLocaleString();
+  });
+
+  // Health check
+  async function checkHealth() {
+    try {
+      const r = await fetch("/api/health");
+      const d = await r.json();
+      healthDot.className = "health-dot " + (d.status === "ok" ? "ok" : "err");
+      healthDot.title = d.status === "ok"
+        ? "Server OK" + (d.hasApiKey ? " — API key loaded" : " — no API key")
+        : "Server error";
+    } catch {
+      healthDot.className = "health-dot err";
+      healthDot.title = "Server unreachable";
+    }
+  }
+  checkHealth();
+  setInterval(checkHealth, 30000);
+
+  // Toast
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  }
+
+  // Generate
+  let isLoading = false;
+
+  async function generate(type) {
+    if (isLoading) return;
+    const text = textarea.value.trim();
+    if (!text) { showToast("Please paste some text first"); return; }
+
+    isLoading = true;
+    document.querySelectorAll(".btn").forEach(b => b.classList.add("loading"));
+
+    outputArea.innerHTML = `
+      <div class="output-placeholder">
+        <div class="spinner"></div>
+        <span>Generating ${type}...</span>
+      </div>`;
+
+    try {
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type, transcript: text }),
+      });
+      const data = await r.json();
+
+      if (!r.ok) {
+        outputArea.innerHTML = `<div class="output-placeholder"><span class="icon">⚠️</span><span>${data.error || "Something went wrong"}</span></div>`;
+        return;
+      }
+
+      if (type === "workflow") {
+        renderMermaid(data.text, data.label);
+      } else {
+        renderText(data.text, data.label);
+      }
+    } catch (e) {
+      outputArea.innerHTML = `<div class="output-placeholder"><span class="icon">⚠️</span><span>Network error — is the server running?</span></div>`;
+    } finally {
+      isLoading = false;
+      document.querySelectorAll(".btn").forEach(b => b.classList.remove("loading"));
+    }
+  }
+
+  function renderText(text, label) {
+    outputArea.innerHTML = `
+      <span class="output-label">${label}</span>
+      <div class="output-text">${escapeHtml(text)}</div>
+      <div class="output-actions">
+        <button class="btn-sm" onclick="copyOutput()">📋 Copy</button>
+        <button class="btn-sm" onclick="downloadOutput('${label}')">💾 Download</button>
+      </div>`;
+  }
+
+  async function renderMermaid(code, label) {
+    try {
+      const { svg } = await mermaid.render("mermaid-" + Date.now(), code);
+      outputArea.innerHTML = `
+        <span class="output-label">${label}</span>
+        <div class="mermaid-container">${svg}</div>
+        <div class="output-actions">
+          <button class="btn-sm" onclick="copyOutput()">📋 Copy Code</button>
+          <button class="btn-sm" onclick="downloadOutput('${label}')">💾 Download</button>
+        </div>`;
+      outputArea.dataset.rawText = code;
+    } catch {
+      renderText(code, label);
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function getOutputText() {
+    if (outputArea.dataset.rawText) return outputArea.dataset.rawText;
+    const el = outputArea.querySelector(".output-text");
+    return el ? el.textContent : "";
+  }
+
+  function copyOutput() {
+    navigator.clipboard.writeText(getOutputText()).then(() => showToast("Copied!"));
+  }
+
+  function downloadOutput(label) {
+    const blob = new Blob([getOutputText()], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "notewright-" + label.toLowerCase().replace(/\s+/g, "-") + ".txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("Downloaded!");
+  }
+</script>
+</body>
+</html>
