@@ -7,10 +7,14 @@
  *   3. Input validation, rate limiting, and error handling built in.
  *
  * Run:
+ *   cd app
  *   npm install
  *   ANTHROPIC_API_KEY=sk-ant-...  node server.js
+ *
+ * Then open http://localhost:3000
  */
 
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 
@@ -19,7 +23,10 @@ const app = express();
 // --- Security & parsing ---
 app.use(cors()); // TODO: tighten to your domain in production
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static("public"));
+
+// FIX: use __dirname so static files resolve correctly no matter
+// which directory you run `node server.js` from.
+app.use(express.static(path.join(__dirname, "public")));
 
 // --- Simple rate limiter (per-IP, in-memory) ---
 const rateLimit = new Map();
@@ -78,7 +85,7 @@ function validateGenerateInput(body) {
 app.post("/api/generate", async (req, res) => {
   try {
     if (!checkRate(req.ip)) return res.status(429).json({ error: "Too many requests. Please wait a moment." });
-    if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: "Server missing ANTHROPIC_API_KEY" });
+    if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: "Server missing ANTHROPIC_API_KEY. Start the server with: ANTHROPIC_API_KEY=sk-ant-... node server.js" });
     const err = validateGenerateInput(req.body);
     if (err) return res.status(400).json({ error: err });
 
@@ -91,7 +98,7 @@ app.post("/api/generate", async (req, res) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1200,
         messages: [{ role: "user", content: PROMPTS[type] + transcript }],
       }),
@@ -132,5 +139,36 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", hasApiKey: !!ANTHROPIC_API_KEY, uptime: process.uptime() });
 });
 
+// Catch-all: serve index.html for any unknown route (SPA support)
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Notewright API on http://localhost:" + PORT));
+app.listen(PORT, () => {
+  console.log("");
+  console.log("  ┌──────────────────────────────────────────┐");
+  console.log("  │                                          │");
+  console.log("  │   NOTEWRIGHT is running!                 │");
+  console.log("  │                                          │");
+  console.log("  │   → Open: http://localhost:" + PORT + "          │");
+  console.log("  │   → API key: " + (ANTHROPIC_API_KEY ? "✅ loaded" : "❌ missing") + "                │");
+  console.log("  │                                          │");
+  console.log("  └──────────────────────────────────────────┘");
+  console.log("");
+  if (!ANTHROPIC_API_KEY) {
+    console.log("  ⚠️  No ANTHROPIC_API_KEY set.");
+    console.log("     The app will load but AI generation won't work.");
+    console.log("     Restart with: ANTHROPIC_API_KEY=sk-ant-... node server.js");
+    console.log("");
+  }
+}).on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error("❌ Port " + PORT + " is already in use.");
+    console.error("   Try: PORT=3001 node server.js");
+    console.error("   Or kill the existing process: lsof -ti:" + PORT + " | xargs kill");
+  } else {
+    console.error("❌ Server failed to start:", err.message);
+  }
+  process.exit(1);
+});
