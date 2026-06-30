@@ -1,17 +1,18 @@
 /**
  * Notewright — backend server (server.js)
  * -----------------------------------------
- * Production-ready Express server:
- *   1. Keeps Anthropic API key OFF the browser (proxied here).
- *   2. Gives Notewright its own API for tools to connect to.
- *   3. Input validation, rate limiting, and error handling built in.
+ * This is the small server that makes the app production-ready:
+ *   1. Keeps your Anthropic API key OFF the browser (proxied here).
+ *   2. Gives Notewright its own API for other tools to connect to.
  *
  * Run:
  *   cd app
  *   npm install
  *   ANTHROPIC_API_KEY=sk-ant-...  node server.js
  *
- * Then open http://localhost:3000
+ * Auth: this starter has NO real authentication. Put a real provider
+ * (Supabase / Auth0 / Firebase / Clerk) in front of these routes before
+ * launch, and verify the user on every request.
  */
 
 const path = require("path");
@@ -19,41 +20,16 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-
-// --- Security & parsing ---
-app.use(cors()); // TODO: tighten to your domain in production
+app.use(cors());                 // tighten to your domain in production
 app.use(express.json({ limit: "1mb" }));
 
-// FIX: use __dirname so static files resolve correctly no matter
-// which directory you run `node server.js` from.
+// Serve static files using an absolute path — works no matter
+// which directory you start the server from.
 app.use(express.static(path.join(__dirname, "public")));
-
-// --- Simple rate limiter (per-IP, in-memory) ---
-const rateLimit = new Map();
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX = 20;
-
-function checkRate(ip) {
-  const now = Date.now();
-  const entry = rateLimit.get(ip) || { count: 0, resetAt: now + RATE_WINDOW_MS };
-  if (now > entry.resetAt) {
-    entry.count = 0;
-    entry.resetAt = now + RATE_WINDOW_MS;
-  }
-  entry.count++;
-  rateLimit.set(ip, entry);
-  return entry.count <= RATE_MAX;
-}
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of rateLimit) {
-    if (now > entry.resetAt) rateLimit.delete(ip);
-  }
-}, 300_000);
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
+// prompt map — keep in sync with the app
 const PROMPTS = {
   summary:   "You are a precise meeting analyst. From the transcript below, write a clear summary: 1) one-line outcome 2) key points 3) decisions 4) open questions. Transcript:\n\n",
   actions:   "Extract every action item from the transcript below as '- [Owner] Task — due [date]'. Transcript:\n\n",
@@ -64,32 +40,28 @@ const PROMPTS = {
   workflow:  "Output ONLY a valid Mermaid flowchart (start 'flowchart TD') for the process in the notes below. No commentary, no code fences. Notes:\n\n",
 };
 
-const TYPE_LABELS = {
-  summary: "Summary", actions: "Action Items", email: "Follow-up Email",
-  decisions: "Decision Log", plan: "Priority Plan", business: "Business Plan",
-  workflow: "Workflow Diagram",
-};
+// --- Health check ---
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    app: "Notewright",
+    hasApiKey: !!ANTHROPIC_API_KEY,
+    uptime: process.uptime(),
+  });
+});
 
-const MAX_TRANSCRIPT_LENGTH = 50000;
-
-function validateGenerateInput(body) {
-  const { type, transcript } = body || {};
-  if (!type || typeof type !== "string") return "type is required";
-  if (!PROMPTS[type]) return "Unknown type: " + type + ". Valid: " + Object.keys(PROMPTS).join(", ");
-  if (!transcript || typeof transcript !== "string") return "transcript is required";
-  if (transcript.trim().length === 0) return "transcript cannot be empty";
-  if (transcript.length > MAX_TRANSCRIPT_LENGTH) return "transcript too long (max " + MAX_TRANSCRIPT_LENGTH + " chars)";
-  return null;
-}
-
+// --- AI proxy: the browser calls THIS, never Anthropic directly ---
 app.post("/api/generate", async (req, res) => {
   try {
-    if (!checkRate(req.ip)) return res.status(429).json({ error: "Too many requests. Please wait a moment." });
-    if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: "Server missing ANTHROPIC_API_KEY. Start the server with: ANTHROPIC_API_KEY=sk-ant-... node server.js" });
-    const err = validateGenerateInput(req.body);
-    if (err) return res.status(400).json({ error: err });
+    if (!ANTHROPIC_API_KEY)
+      return res.status(500).json({ error: "Server missing ANTHROPIC_API_KEY" });
 
-    const { type, transcript } = req.body;
+    const { type, transcript } = req.body || {};
+    const pre = PROMPTS[type];
+    if (!pre) return res.status(400).json({ error: "Unknown type" });
+    if (!transcript || typeof transcript !== "string" || !transcript.trim())
+      return res.status(400).json({ error: "transcript required" });
+
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -100,75 +72,55 @@ app.post("/api/generate", async (req, res) => {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1200,
-        messages: [{ role: "user", content: PROMPTS[type] + transcript }],
+        messages: [{ role: "user", content: pre + transcript }],
       }),
     });
-
-    if (!r.ok) {
-      const errBody = await r.text();
-      console.error("Anthropic API error:", r.status, errBody);
-      return res.status(502).json({ error: "AI service error. Please try again." });
-    }
-
     const data = await r.json();
+    if (!r.ok) {
+      console.error("Anthropic error:", data);
+      return res.status(502).json({ error: "AI service error", detail: data.error?.message || "Unknown" });
+    }
     const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
-    res.json({ type, label: TYPE_LABELS[type], text });
+    res.json({ type, text });
   } catch (e) {
     console.error("Generate error:", e);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json({ error: String(e) });
   }
 });
 
+// --- simple project store (swap the Map for a real database) ---
 const projects = new Map();
-
 app.post("/api/projects", (req, res) => {
-  if (!checkRate(req.ip)) return res.status(429).json({ error: "Too many requests." });
   const id = "p_" + Date.now().toString(36);
-  const project = { id, createdAt: new Date().toISOString(), ...req.body };
-  projects.set(id, project);
-  res.status(201).json(project);
+  projects.set(id, { id, createdAt: new Date().toISOString(), ...req.body });
+  res.status(201).json({ id });
 });
-
 app.get("/api/projects/:id", (req, res) => {
   const p = projects.get(req.params.id);
-  if (!p) return res.status(404).json({ error: "Project not found" });
+  if (!p) return res.status(404).json({ error: "Not found" });
   res.json(p);
 });
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", hasApiKey: !!ANTHROPIC_API_KEY, uptime: process.uptime() });
-});
-
-// Catch-all: serve index.html for any unknown route (SPA support)
-app.get("*", (_req, res) => {
+// --- Catch-all: serve index.html for any non-API route ---
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("");
-  console.log("  ┌──────────────────────────────────────────┐");
-  console.log("  │                                          │");
-  console.log("  │   NOTEWRIGHT is running!                 │");
-  console.log("  │                                          │");
-  console.log("  │   → Open: http://localhost:" + PORT + "          │");
-  console.log("  │   → API key: " + (ANTHROPIC_API_KEY ? "✅ loaded" : "❌ missing") + "                │");
-  console.log("  │                                          │");
-  console.log("  └──────────────────────────────────────────┘");
-  console.log("");
-  if (!ANTHROPIC_API_KEY) {
-    console.log("  ⚠️  No ANTHROPIC_API_KEY set.");
-    console.log("     The app will load but AI generation won't work.");
-    console.log("     Restart with: ANTHROPIC_API_KEY=sk-ant-... node server.js");
-    console.log("");
-  }
+  console.log(`
+  ┌──────────────────────────────────────────┐
+  │      NOTEWRIGHT is running!               │
+  │                                           │
+  │  Local:   http://localhost:${PORT}           │
+  │  API key: ${ANTHROPIC_API_KEY ? "✓ loaded" : "✗ missing (set ANTHROPIC_API_KEY)"}${"          ".slice(0, ANTHROPIC_API_KEY ? 10 : 0)}│
+  └──────────────────────────────────────────┘
+  `);
 }).on("error", (err) => {
   if (err.code === "EADDRINUSE") {
-    console.error("❌ Port " + PORT + " is already in use.");
-    console.error("   Try: PORT=3001 node server.js");
-    console.error("   Or kill the existing process: lsof -ti:" + PORT + " | xargs kill");
+    console.error(`\n  Port ${PORT} is already in use.\n  Try: PORT=3001 node server.js\n`);
   } else {
-    console.error("❌ Server failed to start:", err.message);
+    console.error("Server error:", err);
   }
   process.exit(1);
 });

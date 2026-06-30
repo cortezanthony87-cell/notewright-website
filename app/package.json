@@ -1,7 +1,7 @@
 {
   "name": "notewright-app",
   "version": "1.0.0",
-  "description": "Notewright — AI Meeting Intelligence App",
+  "description": "Notewright — turn conversations into action. Learning modules + AI workspace.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

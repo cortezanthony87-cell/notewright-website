@@ -1,106 +1,59 @@
-# Notewright — AI Meeting Intelligence App
+# Notewright — App
 
-Transform meeting transcripts and notes into summaries, action items, emails, decision logs, plans, business plans, and workflow diagrams — powered by Claude AI.
+A learning + workflow app that turns conversations into action. It is **not** connected to the AI pen — you record and transcribe in the Flowtica app, paste the transcript into Notewright, and it compiles everything into summaries, action plans, follow-up emails, decision logs, a workflow chart, and a branded PowerPoint.
 
-## Quick Start
+> **Working concept.** The Notewright name is not yet trademark-cleared and there's no registered entity. Treat this as a prototype to build on — not for public launch until clearance, real auth, and a deployed backend are in place. Independent; not affiliated with or endorsed by Flowtica.
 
-### Prerequisites
-- **Node.js 18+** — download from [nodejs.org](https://nodejs.org)
-- **Anthropic API key** — get one at [console.anthropic.com](https://console.anthropic.com)
+## What's in the box
 
-### Setup (3 steps)
+- `index.html` — the full app: 8 learning modules, the **Workspace** (paste → AI drafts), PowerPoint export, prompt/template library, and a prototype sign-in.
+- `server.js` — backend starter: an Anthropic proxy (keeps your API key off the browser) and the Notewright API for other tools.
+- `README.md` — this file.
 
+## The 8 modules
+1. Getting Started · 2. Meeting Productivity · 3. Turning Notes Into Action · 4. Business Communication · 5. Fast Data Management · 6. Company Workflows · 7. Templates & AI Prompts · 8. Privacy, Consent & Professional Use.
+
+## How it actually works (read this)
+
+**The AI drafting.** Inside the Claude preview of this app, the Workspace calls Claude directly and works out of the box — paste a transcript and try it. On your **own hosted site** that direct call won't be authenticated, so you route it through `server.js`:
+
+1. Deploy `server.js` with your `ANTHROPIC_API_KEY` set as an environment variable (Render, Railway, Fly.io, or a serverless function all work).
+2. In `index.html`, change `callClaude()` to POST `{ type, transcript }` to `https://your-api.com/api/generate` and read `data.text`.
+3. The key lives **only on the server** — never paste it into the HTML.
+
+**Authentication.** The sign-in screen is a **prototype gate only** — it does not store, send, or secure passwords. Before real users:
+- Add a provider: **Supabase Auth**, **Auth0**, **Firebase Auth**, or **Clerk**.
+- Gate the app and every `/api/*` route behind it; verify the user server-side.
+- Don't hand-roll password storage.
+
+**The API.** A static page can't *be* an API — `server.js` is. Once deployed it exposes:
+- `POST /api/generate` `{ type, transcript }` → AI draft
+- `POST /api/projects` → save a compiled project, returns `{ id }`
+- `GET /api/projects/:id` → fetch a project as JSON
+Swap the in-memory `Map` for a real database (Postgres/Supabase) for persistence.
+
+**Data & persistence.** The app keeps data in the browser session only (no browser storage is used), so it clears on refresh. Use **Export all (JSON)** / **Copy** to move data out, or add the backend + database for persistence.
+
+## Run the backend locally
 ```bash
-# 1. Navigate to the app folder
-cd app
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the server (replace with your real key)
-ANTHROPIC_API_KEY=sk-ant-your-key-here node server.js
+npm init -y
+npm install express cors
+ANTHROPIC_API_KEY=sk-ant-xxxxx node server.js
+# Notewright API on http://localhost:3000
 ```
 
-**Windows (Command Prompt):**
-```cmd
-cd app
-npm install
-set ANTHROPIC_API_KEY=sk-ant-your-key-here
-node server.js
-```
+## Branding
+The header mark is the v5 faceted-nib + circuitry logo (inline SVG). Swap colours/marks in the `nibSVG()` function and the `:root` CSS variables.
 
-**Windows (PowerShell):**
-```powershell
-cd app
-npm install
-$env:ANTHROPIC_API_KEY="sk-ant-your-key-here"
-node server.js
-```
+## Honest limitations (so nothing surprises you)
+- **Tasklet did not build this** — Tasklet automates browser tasks; a custom app like this is written as code (here) and hosted by you.
+- AI features need either the Claude preview or your deployed backend + key.
+- Sign-in is a prototype; wire a real auth provider before launch.
+- No real persistence until you connect a database.
+- PowerPoint and JSON export run in the browser and download locally.
 
-### 4. Open the app
-
-Go to **http://localhost:3000** in your browser.
-
-You should see the Notewright banner in the terminal:
-
-```
-  ┌──────────────────────────────────────────┐
-  │                                          │
-  │   NOTEWRIGHT is running!                 │
-  │                                          │
-  │   → Open: http://localhost:3000          │
-  │   → API key: ✅ loaded                   │
-  │                                          │
-  └──────────────────────────────────────────┘
-```
-
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| `Cannot find module 'express'` | Run `npm install` first |
-| `Port 3000 is already in use` | Use `PORT=3001 node server.js` |
-| Page loads but AI says "missing API key" | Set `ANTHROPIC_API_KEY` before starting |
-| `node: command not found` | Install Node.js from [nodejs.org](https://nodejs.org) |
-| Page shows "Server unreachable" (red dot) | Make sure the server is running in your terminal |
-
-## Output Types
-
-| Button | What it generates |
-|--------|-------------------|
-| 📋 Summary | One-line outcome, key points, decisions, open questions |
-| ✅ Actions | Action items with owner and due date |
-| 📧 Email | Professional follow-up email |
-| ⚖️ Decisions | Decision log table |
-| 📊 Plan | Prioritised Now / Next / Later plan |
-| 💼 Business | One-page business plan |
-| 🔀 Workflow | Mermaid.js flowchart diagram |
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/generate` | Generate AI output (body: `{ type, transcript }`) |
-| POST | `/api/projects` | Save a project |
-| GET | `/api/projects/:id` | Retrieve a project |
-| GET | `/api/health` | Server health check |
-
-## Architecture
-
-```
-Browser (index.html)  →  Express server (server.js)  →  Anthropic API
-                          ├── API key stays here (never in browser)
-                          ├── Rate limiting (20 req/min/IP)
-                          └── Input validation
-```
-
-## Security Notes
-
-- The Anthropic API key is **never exposed to the browser** — all AI calls go through the server.
-- Add real authentication (Supabase / Auth0 / Firebase / Clerk) before launching publicly.
-- Tighten CORS to your domain in production.
-- Swap the in-memory project store for a real database.
-
----
-
-*Notewright is independent and is not affiliated with or endorsed by Flowtica.*
+## Suggested next steps
+1. Try the Workspace in the Claude preview with a real transcript.
+2. Deploy `server.js`, set the key, and repoint `callClaude()`.
+3. Add an auth provider and a database.
+4. Once the name clears: trademark it, add the final logo, and connect your domain.
